@@ -25,11 +25,8 @@ def load_model_ecommerce():
 
     return model, features
 
-def load_model_ethernet():
-    model_path = 'model_wts/ethernet_model_weights.pkl'
-    features_path = 'model_wts/ethernet_model_features.pkl'
-
+def load_model_eth():
+    model_path = 'model_wts/ethereum_model_weights.pkl'
     model = joblib.load(model_path)
-    features = joblib.load(features_path)
 
-    return model, features
+    return model
