@@ -1,3 +1,9 @@
 pandas
 numpy
 scikit-learn
+missingno
+plotly
+imblearn
+lightgbm
+xgboost
+catboost
