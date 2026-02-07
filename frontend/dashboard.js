@@ -52,11 +52,10 @@ const trafficChart = new Chart(ctx, {
 });
 
 function refreshData() {
-    // Randomize numbers slightly to show "activity"
     const totalTx = document.getElementById('totalTx');
     const valSecured = document.getElementById('valSecured');
     
-    // Parse current int, add random, update
+    // Randomised values for demo purposes
     let currentTx = parseInt(totalTx.innerText.replace(/,/g, ''));
     totalTx.innerText = (currentTx + Math.floor(Math.random() * 50)).toLocaleString();
     
@@ -110,7 +109,7 @@ function addFeedItem() {
 // Add a new feed item every 2.5 seconds
 setInterval(addFeedItem, 2500);
 
-// Add initial items
+// Initial items 
 addFeedItem();
 addFeedItem();
 addFeedItem();
