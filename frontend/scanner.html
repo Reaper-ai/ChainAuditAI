@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Fraud Proof Scanner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#3b82f6"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+        ChainAuditAI
+      </div>
+      <nav style="display: flex; gap: 20px">
+        <a
+          href="dash.html"
+          style="color: var(--text-secondary); text-decoration: none"
+          >Dashboard</a
+        >
+        <a
+          href="scanner.html"
+          style="
+            color: var(--text-primary);
+            font-weight: bold;
+            text-decoration: none;
+          "
+          >Scanner</a
+        >
+      </nav>
+    </header>
+
+    <div class="main-grid">
+      <div class="input-section">
+        <h2>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          Step 1: Select AI Model
+        </h2>
+
+        <div class="model-grid" style="grid-template-columns: repeat(2, 1fr)">
+          <div
+            class="model-card active"
+            onclick="selectModel(this, 'lightgbm')"
+          >
+            <span class="model-name">⚡ LightGBM</span>
+            <span class="model-desc">Gradient Boosting</span>
+          </div>
+          <div class="model-card" onclick="selectModel(this, 'neural_net')">
+            <span class="model-name">🧠 Neural Net</span>
+            <span class="model-desc">Deep Learning</span>
+          </div>
+          <div class="model-card" onclick="selectModel(this, 'iso_forest')">
+            <span class="model-name">🌲 Iso Forest</span>
+            <span class="model-desc">Anomaly Detect</span>
+          </div>
+          <div class="model-card" onclick="selectModel(this, 'xgboost')">
+            <span class="model-name">🚀 XGBoost</span>
+            <span class="model-desc">High Performance</span>
+          </div>
+        </div>
+
+        <div class="form-card" style="margin-top: 2rem">
+          <h2 style="font-size: 1rem">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+              <line x1="12" y1="2" x2="12" y2="12"></line>
+            </svg>
+            Step 2: Select Signal to Broadcast
+          </h2>
+
+          <div class="signal-grid">
+            <div
+              class="signal-card fraud"
+              onclick="selectSignal(this, 'fraud')"
+            >
+              <svg
+                class="signal-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ef4444"
+                stroke-width="2"
+              >
+                <path
+                  d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                ></path>
+                <line x1="12" y1="8" x2="12" y2="14"></line>
+                <circle cx="12" cy="17" r="0.5"></circle>
+
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <div style="font-weight: bold; color: #ef4444">FRAUD Signal</div>
+              <div style="font-size: 0.8rem; color: #94a3b8">
+                Simulate threat
+              </div>
+            </div>
+
+            <div
+              class="signal-card legit"
+              onclick="selectSignal(this, 'legit')"
+            >
+              <svg
+                class="signal-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#22c55e"
+                stroke-width="2"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <div style="font-weight: bold; color: #22c55e">LEGIT Signal</div>
+              <div style="font-size: 0.8rem; color: #94a3b8">
+                Simulate clean txn
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()">
+            Broadcast Signal to Backend
+          </button>
+        </div>
+      </div>
+
+      <div class="output-section">
+        <h2>Broadcast Results</h2>
+
+        <div id="placeholder" class="result-placeholder">
+          Select model and signal type...
+        </div>
+
+        <div id="resultCard" class="result-card hidden">
+          <div class="score-header">
+            <span class="text-secondary text-sm">VERDICT SENT</span>
+            <span id="riskBadge" class="risk-badge">--</span>
+          </div>
+
+          <div class="big-score" id="scoreValue">--</div>
+          <div class="score-desc" id="scoreText">Processing...</div>
+
+          <hr
+            style="
+              border-color: var(--border-color);
+              margin-bottom: 1rem;
+              opacity: 0.5;
+            "
+          />
+
+          <div
+            style="
+              margin-bottom: 0.5rem;
+              font-size: 0.8rem;
+              color: var(--text-secondary);
+            "
+          >
+            Blockchain Proof Hash:
+          </div>
+          <div class="proof-box" id="proofHash">Waiting for commitment...</div>
+
+          <button
+            class="btn-commit"
+            id="commitBtn"
+            onclick="commitToLedger()"
+            disabled
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Commit Proof to Chain
+          </button>
+        </div>
+      </div>
+    </div>
+    <script src="scanner.js"></script>
+  </body>
+</html>
