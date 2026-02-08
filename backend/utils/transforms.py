@@ -251,27 +251,10 @@ def transform_ethereum_fraud_data(raw_data, selected_features=None):
     
     return df
 
-
 def transform_ecommerce_fraud_data(raw_data, selected_features=None):
     """
-    Transform raw e-commerce transaction fraud data through all preprocessing steps.
-    
-    This function applies all the feature engineering and transformations done 
-    in the ecommerce-fraud.ipynb notebook, including:
-    1. Customer age cleaning
-    2. Address matching feature
-    3. One-hot encoding
-    4. Standard scaling
-    5. Rolling and cumulative features
-    6. Risk and ratio features
-    7. Cyclical time encoding
-    
-    Args:
-        raw_data: pandas DataFrame with raw e-commerce transaction data
-        selected_features: list of feature names to select (optional, for inference)
-    
-    Returns:
-        Transformed pandas DataFrame ready for model prediction
+    Transform raw e-commerce transaction fraud data.
+    FIX: Removed drop_first=True to prevent data loss on single-row inference.
     """
     
     df = raw_data.copy()
@@ -279,6 +262,7 @@ def transform_ecommerce_fraud_data(raw_data, selected_features=None):
     # ===== STEP 1: CLEAN CUSTOMER AGE =====
     if 'Customer Age' in df.columns:
         mean_age = df['Customer Age'].mean()
+        if pd.isna(mean_age): mean_age = 30 # Default fallback
         df.loc[df['Customer Age'] < 10, 'Customer Age'] = mean_age
     
     # ===== STEP 2: ADDRESS MATCH FEATURE =====
@@ -290,11 +274,12 @@ def transform_ecommerce_fraud_data(raw_data, selected_features=None):
     columns_to_drop = [col for col in drop_cols if col in df.columns]
     df = df.drop(columns=columns_to_drop, axis=1)
     
-    # ===== STEP 4: ONE-HOT ENCODING =====
+    # ===== STEP 4: ONE-HOT ENCODING (FIXED) =====
     categorical_cols = ['Payment Method', 'Product Category', 'Device Used']
     columns_to_encode = [col for col in categorical_cols if col in df.columns]
     if columns_to_encode:
-        df = pd.get_dummies(df, columns=columns_to_encode, drop_first=True)
+        # CRITICAL FIX: drop_first=False so we don't lose the category in single-row inference
+        df = pd.get_dummies(df, columns=columns_to_encode, drop_first=False)
     
     # ===== STEP 5: STANDARD SCALING (NUMERIC FEATURES) =====
     numeric_features = ['Transaction Amount', 'Quantity', 'Customer Age', 'Account Age Days', 'Transaction Hour']
@@ -303,14 +288,11 @@ def transform_ecommerce_fraud_data(raw_data, selected_features=None):
         scaler = StandardScaler()
         df[features_to_scale] = scaler.fit_transform(df[features_to_scale])
     
-    # ===== STEP 6: TIME-BASED FEATURES (SIMPLE AGGREGATIONS) =====
-    # Note: Complex rolling window features (Polars) are simplified for deployment
+    # ===== STEP 6: TIME-BASED FEATURES =====
     if 'Customer ID' in df.columns and 'Transaction Amount' in df.columns:
-        # Customer average (cumulative)
         df['Customer_Avg_Amount'] = df.groupby('Customer ID')['Transaction Amount'].transform('mean')
     
     if 'IP Address' in df.columns:
-        # IP-based features
         if 'Customer ID' in df.columns:
             df['IPs_per_Customer'] = df.groupby('Customer ID')['IP Address'].transform('nunique')
             df['Customers_per_IP'] = df.groupby('IP Address')['Customer ID'].transform('nunique')
@@ -352,16 +334,19 @@ def transform_ecommerce_fraud_data(raw_data, selected_features=None):
     columns_to_drop = [col for col in final_drop_cols if col in df.columns]
     df = df.drop(columns=columns_to_drop, axis=1)
     
-    # ===== STEP 10: FEATURE SELECTION =====
+    # ===== STEP 10: FEATURE SELECTION (CRITICAL) =====
     if selected_features is not None:
-        missing_features = set(selected_features) - set(df.columns)
-        for feature in missing_features:
-            df[feature] = 0
+        # Add missing features as 0
+        missing_features = list(set(selected_features) - set(df.columns))
+        if missing_features:
+            df_missing = pd.DataFrame(0, index=df.index, columns=missing_features)
+            df = pd.concat([df, df_missing], axis=1)
+        
+        # Force select only required features in correct order
+        # This will silently drop 'Account Age Days' if it wasn't dropped in step 9
         df = df[selected_features]
     
     return df
-
-
 def transform_bank_fraud_data(raw_data, selected_features=None):
     """
     Transform raw bank account fraud data through all preprocessing steps.
