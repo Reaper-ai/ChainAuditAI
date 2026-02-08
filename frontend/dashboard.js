@@ -1,163 +1,148 @@
 const API_BASE_URL = "http://localhost:8000"; // Backend URL
 
-// Chart.js setup for traffic analysis
 const ctx = document.getElementById('trafficChart').getContext('2d');
 
-// Gradient for the Safe line
-const gradientSafe = ctx.createLinearGradient(0, 0, 0, 400);
-gradientSafe.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
-gradientSafe.addColorStop(1, 'rgba(59, 130, 246, 0)');
+// Bins for AI Risk Scores (0 to 100)
+const scoreLabels = ['0-10', '11-20', '21-30', '31-40', '41-50', '51-60', '61-70', '71-80', '81-90', '91-100'];
 
-let trafficChart = null;
-let dashboardData = {
-    safeData: [],
-    fraudData: [],
-    labels: []
-};
-
-// Initialize chart
-function initChart() {
-    trafficChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dashboardData.labels,
-            datasets: [
-                {
-                    label: 'Safe Transactions',
-                    data: dashboardData.safeData,
-                    borderColor: '#3b82f6',
-                    backgroundColor: gradientSafe,
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Fraud Attempts',
-                    data: dashboardData.fraudData,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'transparent',
-                    borderDash: [5, 5],
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    grid: { color: '#334155' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+// Initialize with empty data (will be filled by fetch)
+let trafficChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: scoreLabels,
+        datasets: [
+            {
+                label: 'Transaction Frequency',
+                data: [], // Starts empty
+                backgroundColor: [], // Dynamic colors set on update
+                borderRadius: 4,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }, // Hide legend
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return `Volume: ${context.raw} txns`;
+                    }
                 }
             }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#334155' },
+                ticks: { color: '#94a3b8' },
+                title: {
+                    display: true,
+                    text: 'Frequency (Tx Count)',
+                    color: '#64748b',
+                    font: { size: 10 }
+                }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { color: '#94a3b8' },
+                title: {
+                    display: true,
+                    text: 'AI Risk Score Range',
+                    color: '#64748b',
+                    font: { size: 10 }
+                }
+            }
+        },
+        animation: {
+            duration: 1500,
+            easing: 'easeOutQuart'
         }
-    });
-}
+    }
+});
 
-// Fetch dashboard data from backend
 async function fetchDashboardData() {
     try {
         const response = await fetch(`${API_BASE_URL}/dash/`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();
-        updateDashboard(data);
+        const records = data.records || [];
+
+        updateMetrics(records);
+
+        updateChartData(records);
+
+        updateLiveFeed(records);
         
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-        document.getElementById('feedHeading').innerText = `Live Block Feed - Error: ${error.message}`;
     }
 }
 
-// Update dashboard with real data
-function updateDashboard(data) {
-    const records = data.records || [];
-    
-    // Group by transaction type for chart
-    const typeGroups = {
-        vehicle: { safe: 0, fraud: 0 },
-        bank: { safe: 0, fraud: 0 },
-        ecommerce: { safe: 0, fraud: 0 },
-        ethereum: { safe: 0, fraud: 0 }
-    };
-    
+function updateChartData(records) {
+    // Initialize 10 bins with 0
+    const bins = Array(10).fill(0);
+
     records.forEach(record => {
-        const type = record.transaction_type;
-        if (typeGroups[type]) {
-            if (record.fraud_score >= 50) {
-                typeGroups[type].fraud++;
-            } else {
-                typeGroups[type].safe++;
-            }
-        }
+        // Ensure score is within 0-100
+        const score = Math.max(0, Math.min(record.fraud_score, 100));
+        
+        // Calculate index: Score 85 -> index 8. Score 100 -> index 9.
+        const binIndex = score === 100 ? 9 : Math.floor(score / 10);
+        bins[binIndex]++;
     });
-    
-    // Update chart
-    dashboardData.labels = ['Vehicle', 'Bank', 'E-Commerce', 'Ethereum'];
-    dashboardData.safeData = [
-        typeGroups.vehicle.safe,
-        typeGroups.bank.safe,
-        typeGroups.ecommerce.safe,
-        typeGroups.ethereum.safe
-    ];
-    dashboardData.fraudData = [
-        typeGroups.vehicle.fraud,
-        typeGroups.bank.fraud,
-        typeGroups.ecommerce.fraud,
-        typeGroups.ethereum.fraud
-    ];
-    
-    if (trafficChart) {
-        trafficChart.data.labels = dashboardData.labels;
-        trafficChart.data.datasets[0].data = dashboardData.safeData;
-        trafficChart.data.datasets[1].data = dashboardData.fraudData;
-        trafficChart.update();
-    }
-    
-    // Update live feed
-    updateLiveFeed(records);
+
+    // Dynamic Coloring Logic: Safe (0-80) = Blue, High Risk (81-100) = Red
+    const backgroundColors = bins.map((_, index) => {
+        // Bins 0-7 (Scores 0-80) are Blue
+        // Bins 8-9 (Scores 81-100) are Red
+        return index >= 8 ? '#ef4444' : '#3b82f6';
+    });
+
+    // Update Chart Instance
+    trafficChart.data.datasets[0].data = bins;
+    trafficChart.data.datasets[0].backgroundColor = backgroundColors;
+    trafficChart.update();
 }
 
-// Update live feed with recent transactions
+
 function updateLiveFeed(records) {
     const feedContainer = document.getElementById('liveFeed');
+    if(!feedContainer) return;
+
     feedContainer.innerHTML = ''; // Clear existing
     
-    // Show most recent 10 records
-    const recentRecords = records.slice(0, 10);
+    // Sort by newest first (using created_at timestamp) and take top 10
+    const sortedRecords = [...records].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+    ).slice(0, 10);
     
-    if (recentRecords.length === 0) {
-        feedContainer.innerHTML = `
-            <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
-                No transactions yet. Use the scanner to test fraud detection.
-            </div>
-        `;
+    if (sortedRecords.length === 0) {
+        feedContainer.innerHTML = `<div style="text-align:center; padding:1rem; color:#64748b;">No activity yet.</div>`;
         return;
     }
-    
-    recentRecords.forEach(record => {
-        const isFraud = record.fraud_score >= 50;
+
+    sortedRecords.forEach(record => {
+        const isFraud = record.fraud_score > 50;
         const timeAgo = getTimeAgo(record.created_at);
-        const txType = record.transaction_type.charAt(0).toUpperCase() + record.transaction_type.slice(1);
-        
+        const type = record.transaction_type || "Unknown";
+
+        // Create feed item
         const div = document.createElement('div');
         div.className = 'feed-item';
         div.innerHTML = `
             <div class="feed-header">
-                <span>${txType}</span>
+                <span style="text-transform: capitalize;">${type}</span>
                 <span>${timeAgo}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="feed-hash">DB ID: ${record.id} | Score: ${record.fraud_score}</span>
+                <span class="feed-hash">ID: ${record.id}</span>
                 <span style="
                     font-size: 0.7rem; 
                     font-weight: bold; 
@@ -166,46 +151,36 @@ function updateLiveFeed(records) {
                     background: ${isFraud ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; 
                     color: ${isFraud ? '#f87171' : '#4ade80'};
                 ">
-                    ${isFraud ? 'FRAUD' : 'SAFE'}
+                    ${isFraud ? 'BLOCKED' : 'VERIFIED'} (Score: ${record.fraud_score})
                 </span>
             </div>
-            ${record.blockchain_tx_hash ? `
-                <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                    ⛓️ On-Chain: ${record.blockchain_tx_hash.substring(0, 20)}...
-                </div>
-            ` : ''}
         `;
-        
         feedContainer.appendChild(div);
     });
 }
 
-// Helper function to calculate time ago
-function getTimeAgo(timestamp) {
-    if (!timestamp) return 'Unknown';
+// Calculate "Time Ago"
+function getTimeAgo(dateString) {
+    if(!dateString) return '';
+    const date = new Date(dateString);
+    const seconds = Math.floor((new Date() - date) / 1000);
     
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins === 1) return '1 min ago';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
-    return `${diffDays} days ago`;
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + "y ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + "mo ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + "d ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + "h ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + "m ago";
+    return Math.floor(seconds) + "s ago";
 }
 
-// Initialize dashboard on page load
+// Initialisation
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Dashboard initialized. Backend:", API_BASE_URL);
-    initChart();
+    console.log("Dashboard initialized. Connecting to:", API_BASE_URL);
     fetchDashboardData();
     
     // Auto-refresh every 5 seconds
