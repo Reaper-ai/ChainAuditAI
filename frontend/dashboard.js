@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8000"; // Backend URL
+const API_BASE_URL = "http://localhost:8000"; 
 
 const ctx = document.getElementById('trafficChart').getContext('2d');
 
@@ -67,7 +67,8 @@ let trafficChart = new Chart(ctx, {
 
 async function fetchDashboardData() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dash/`);
+        // FIX: Point to the specific /stats endpoint
+        const response = await fetch(`${API_BASE_URL}/stats/`);
         
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
@@ -144,12 +145,9 @@ function updateLiveFeed(records) {
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span class="feed-hash">ID: ${record.id}</span>
                 <span style="
-                    font-size: 0.7rem; 
-                    font-weight: bold; 
-                    padding: 2px 6px; 
-                    border-radius: 4px; 
-                    background: ${isFraud ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; 
+                    background: ${isFraud ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'};
                     color: ${isFraud ? '#f87171' : '#4ade80'};
+                    padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;
                 ">
                     ${isFraud ? 'BLOCKED' : 'VERIFIED'} (Score: ${record.fraud_score})
                 </span>
