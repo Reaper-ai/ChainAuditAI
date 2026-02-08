@@ -161,7 +161,7 @@ function updateLiveFeed(records) {
                 <span>${timeAgo}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="feed-hash">ID: ${record.id}</span>
+                <span class="feed-hash">Hash: ${record.tx_hash}</span>
                 <span style="
                     background: ${isFraud ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.2)"};
                     color: ${isFraud ? "#f87171" : "#4ade80"};
