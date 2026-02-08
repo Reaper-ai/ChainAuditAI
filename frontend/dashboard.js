@@ -103,7 +103,7 @@ function updateChartData(records) {
     const backgroundColors = bins.map((_, index) => {
         // Bins 0-7 (Scores 0-80) are Blue
         // Bins 8-9 (Scores 81-100) are Red
-        return index >= 8 ? '#ef4444' : '#3b82f6';
+        return index >= 80 ? '#ef4444' : '#3b82f6';
     });
 
     // Update Chart Instance
