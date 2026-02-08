@@ -20,10 +20,6 @@ class FraudLog(Base):
     
     # Fraud detection results
     fraud_score = Column(Integer)  # 0-100
-    risk_level = Column(String)  # LOW, MEDIUM, HIGH, CRITICAL
-    probability = Column(Float)  # 0.0-1.0
-    raw_prediction = Column(Integer)  # 0 or 1 from model
-    
     # Model information
     model_version = Column(String)
     
@@ -31,7 +27,6 @@ class FraudLog(Base):
     transaction_data = Column(JSON, nullable=True)
     
     # Blockchain info
-    blockchain_tx_hash = Column(String, nullable=True, index=True)
     blockchain_timestamp = Column(Integer, nullable=True)
     gas_used = Column(Integer, nullable=True)
     
@@ -40,5 +35,5 @@ class FraudLog(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
-        return f"<FraudLog(id={self.id}, tx_hash={self.tx_hash}, fraud_score={self.fraud_score}, risk_level={self.risk_level})>"
+        return f"<FraudLog(id={self.id}, tx_hash={self.tx_hash}, fraud_score={self.fraud_score})>"
 

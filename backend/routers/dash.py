@@ -28,21 +28,9 @@ def dashboard_stream():
             "tx_hash": record.tx_hash,
             "transaction_type": record.transaction_type,
             "fraud_score": record.fraud_score,
-            "risk_level": record.risk_level,
-            "probability": record.probability,
-            "raw_prediction": record.raw_prediction,
             "model_version": record.model_version,
             "created_at": record.created_at.isoformat() if record.created_at else None,
-            "blockchain_tx_hash": record.blockchain_tx_hash
         }
-        
-        # If logged to blockchain, fetch on-chain data
-        if record.blockchain_tx_hash:
-            try:
-                chain_data = get_onchain_fraud_data(record.blockchain_tx_hash)
-                item["blockchain_data"] = chain_data
-            except Exception as e:
-                item["blockchain_data"] = {"error": str(e)}
         
         response.append(item)
     

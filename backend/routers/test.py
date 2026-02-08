@@ -33,9 +33,6 @@ class TestRequest(BaseModel):
 class TestResultItem(BaseModel):
     """Single test result."""
     fraud_score: int
-    risk_level: str
-    probability: float
-    raw_prediction: int
     expected_fraud_label: Optional[str] = None
     database_id: Optional[int] = None
     blockchain_tx: Optional[str] = None
@@ -200,7 +197,9 @@ def run_fraud_test(request: TestRequest):
             detection_result = detect_fraud(row_dict, request.transaction_type)
             
             if not detection_result.get("success", False):
-                print(f"Warning: Detection failed for row: {detection_result.get('error')}")
+                error_msg = detection_result.get('error', 'Unknown error')
+                print(f"Warning: Detection failed for row: {error_msg}")
+                print(f"Row data keys: {list(row_dict.keys())}")
                 continue
             
             # Step 5: Log to database
@@ -208,9 +207,6 @@ def run_fraud_test(request: TestRequest):
                 tx_hash=f"test_{datetime.now().timestamp()}_{random.randint(1000, 9999)}",
                 transaction_type=request.transaction_type,
                 fraud_score=detection_result["fraud_score"],
-                risk_level=detection_result["risk_level"],
-                probability=detection_result["probability"],
-                raw_prediction=detection_result["raw_prediction"],
                 model_version="v1",
                 transaction_data=row_dict
             )
@@ -225,9 +221,6 @@ def run_fraud_test(request: TestRequest):
             # Collect result
             results.append(TestResultItem(
                 fraud_score=detection_result["fraud_score"],
-                risk_level=detection_result["risk_level"],
-                probability=detection_result["probability"],
-                raw_prediction=detection_result["raw_prediction"],
                 expected_fraud_label=expected_label,
                 database_id=fraud_log.id,
                 blockchain_tx=blockchain_tx
@@ -264,9 +257,6 @@ class DetectResponse(BaseModel):
     """Response for single transaction detection"""
     transaction_type: str
     fraud_score: int
-    risk_level: str
-    probability: float
-    raw_prediction: int
     database_id: int
     blockchain_tx: Optional[str] = None
 
@@ -287,9 +277,6 @@ def detect_transaction(request: DetectRequest):
         fraud_log = FraudLog(
             transaction_type=request.transaction_type,
             fraud_score=detection_result["fraud_score"],
-            risk_level=detection_result["risk_level"],
-            probability=detection_result["probability"],
-            raw_prediction=detection_result["raw_prediction"],
             tx_hash=request.tx_hash,
             timestamp=datetime.utcnow()
         )
@@ -305,9 +292,6 @@ def detect_transaction(request: DetectRequest):
         return DetectResponse(
             transaction_type=request.transaction_type,
             fraud_score=detection_result["fraud_score"],
-            risk_level=detection_result["risk_level"],
-            probability=detection_result["probability"],
-            raw_prediction=detection_result["raw_prediction"],
             database_id=fraud_log.id,
             blockchain_tx=blockchain_tx
         )
