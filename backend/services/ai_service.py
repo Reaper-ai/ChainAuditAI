@@ -73,9 +73,14 @@ class FraudDetectionService:
             
             # 6. Convert probability to score (0-100 continuous scale)
             # This gives a more robust and granular fraud score
-            func = lambda x, n: 100 * (1 - (1 - x) ** n)
+            calculate_score = lambda p: (
+                (p / 0.75) * 50 if p < 0.75 else 
+                50 + ((p - 0.75) / 0.10) * 30 if p < 0.85 else 
+                80 + ((p - 0.85) / 0.15) * 20
+                )
 
-            fraud_score = ceil(func(fraud_probability, 1.9))
+
+            fraud_score = ceil(calculate_score(fraud_probability))
             
             
             return {
