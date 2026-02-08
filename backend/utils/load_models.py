@@ -19,25 +19,37 @@ def get_model_path(filename):
     return os.path.join(MODEL_DIR, filename)
 
 def load_model_vehicle():
+    """Load vehicle model and extract feature names from the model itself."""
     model = joblib.load(get_model_path('vehicle_model_weights.pkl'))
-    # Extract feature names from the trained model
+    # Extract features from model instead of corrupted feature files
     features = model.feature_names_in_.tolist() if hasattr(model, 'feature_names_in_') else None
+    if features:
+        print(f"✓ Vehicle model loaded with {len(features)} features")
     return model, features
 
 def load_model_bank():
+    """Load bank model and extract feature names from the model itself."""
     model = joblib.load(get_model_path('bank_model_weights.pkl'))
-    # Extract feature names from the trained model
+    # Extract features from model instead of corrupted feature files
     features = model.feature_names_in_.tolist() if hasattr(model, 'feature_names_in_') else None
+    if features:
+        print(f"✓ Bank model loaded with {len(features)} features")
     return model, features
 
 def load_model_ecommerce():
+    """Load ecommerce model and extract feature names from the model itself."""
     model = joblib.load(get_model_path('ecommerce_model_weights.pkl'))
-    # Extract feature names from the trained model
+    # Extract features from model instead of corrupted feature files
     features = model.feature_names_in_.tolist() if hasattr(model, 'feature_names_in_') else None
+    if features:
+        print(f"✓ Ecommerce model loaded with {len(features)} features")
     return model, features
 
 def load_model_eth():
+    """Load ethereum model and extract feature names from the model itself."""
     model = joblib.load(get_model_path('ethereum_model_weights.pkl'))
-    # Extract feature names from the trained model
+    # Extract features from model instead of corrupted feature files
     features = model.feature_names_in_.tolist() if hasattr(model, 'feature_names_in_') else None
+    if features:
+        print(f"✓ Ethereum model loaded with {len(features)} features")
     return model, features

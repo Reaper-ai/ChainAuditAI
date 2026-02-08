@@ -42,27 +42,27 @@ class FraudDetectionService:
         Returns only the fraud score (0 or 100) and status.
         """
         if transaction_type not in self.models:
-            raise ValueError(f"Unknown transaction_type: {transaction_type}")
+            raise ValueError(f"Unknown transaction type: {transaction_type}")
         
         try:
-            # 1. Unpack model and feature list
+            # 1. Unpack model and expected feature list
             model, expected_features = self.models[transaction_type]
             transform_fn = self.transforms[transaction_type]
             
             # 2. Convert to DataFrame
             df = pd.DataFrame([transaction_data])
             
-            # 3. Transform data (pass None to get all transformed features)
+            # 3. Transform data WITHOUT feature selection (get all transformed columns)
             transformed_data = transform_fn(df, selected_features=None)
             
-            # 4. Reorder columns to match model expectations
+            # 4. Reorder/select columns to match model's expected features
             if expected_features is not None:
-                # Ensure all expected features exist (add missing as 0)
+                # Add missing features as 0
                 for feature in expected_features:
                     if feature not in transformed_data.columns:
                         transformed_data[feature] = 0
                 
-                # Select only expected features in correct order
+                # Select only expected features in the EXACT order
                 transformed_data = transformed_data[expected_features]
             
             # 5. Get binary prediction (0 or 1)
