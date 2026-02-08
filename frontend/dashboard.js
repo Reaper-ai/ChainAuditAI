@@ -10,8 +10,6 @@ gradientSafe.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
 let trafficChart = null;
 let dashboardData = {
-    totalTx: 0,
-    fraudBlocked: 0,
     safeData: [],
     fraudData: [],
     labels: []
@@ -83,23 +81,6 @@ async function fetchDashboardData() {
 // Update dashboard with real data
 function updateDashboard(data) {
     const records = data.records || [];
-    
-    // Update metrics
-    const totalTx = records.length;
-    const fraudCount = records.filter(r => r.fraud_score >= 50).length;
-    const safeCount = totalTx - fraudCount;
-    
-    document.getElementById('totalTx').innerText = totalTx.toLocaleString();
-    document.getElementById('fraudBlocked').innerText = fraudCount.toLocaleString();
-    
-    // Calculate total value (simulated based on transaction count)
-    const avgValue = 50000; // $50k average per transaction
-    const totalValue = (totalTx * avgValue) / 1000000;
-    document.getElementById('valSecured').innerText = `$${totalValue.toFixed(1)}M`;
-    
-    // Update chart data
-    dashboardData.totalTx = totalTx;
-    dashboardData.fraudBlocked = fraudCount;
     
     // Group by transaction type for chart
     const typeGroups = {
