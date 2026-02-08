@@ -24,16 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(dash.router)
-app.include_router(test.router)
-
-# Serve frontend
+# Setup frontend path
 frontend_path = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 frontend_path = os.path.abspath(frontend_path)
 
-# Mount static files BEFORE defining routes
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+# Include API routers FIRST (before static files to avoid conflicts)
+app.include_router(dash.router)
+app.include_router(test.router)
 
 @app.get("/")
 async def root():
@@ -58,3 +55,12 @@ async def dashboard_js():
 @app.get("/styles.css")
 async def styles_css():
     return FileResponse(os.path.join(frontend_path, 'styles.css'))
+
+# Health check
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+# Mount static files LAST to avoid conflicts with API routes
+if os.path.exists(frontend_path):
+    app.mount("/static", StaticFiles(directory=frontend_path), name="static")

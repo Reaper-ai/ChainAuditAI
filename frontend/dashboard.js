@@ -1,9 +1,11 @@
-const API_BASE_URL = "http://localhost:8000"; // Backend URL
+// ===============================
+// CONFIG
+// ===============================
+// Ensure this matches your backend URL (no trailing slash)
+const API_BASE_URL = "http://localhost:8000"; 
 
-// Chart.js setup for traffic analysis
+// Chart.js setup
 const ctx = document.getElementById('trafficChart').getContext('2d');
-
-// Gradient for the Safe line
 const gradientSafe = ctx.createLinearGradient(0, 0, 0, 400);
 gradientSafe.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
 gradientSafe.addColorStop(1, 'rgba(59, 130, 246, 0)');
@@ -17,22 +19,24 @@ let dashboardData = {
 
 // Initialize chart
 function initChart() {
+    if (trafficChart) return; // Prevent double init
+    
     trafficChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: dashboardData.labels,
+            labels: ['Vehicle', 'Bank', 'E-Com', 'Ethereum'],
             datasets: [
                 {
-                    label: 'Safe Transactions',
-                    data: dashboardData.safeData,
+                    label: 'Safe',
+                    data: [0, 0, 0, 0],
                     borderColor: '#3b82f6',
                     backgroundColor: gradientSafe,
                     fill: true,
                     tension: 0.4
                 },
                 {
-                    label: 'Fraud Attempts',
-                    data: dashboardData.fraudData,
+                    label: 'Fraud',
+                    data: [0, 0, 0, 0],
                     borderColor: '#ef4444',
                     backgroundColor: 'transparent',
                     borderDash: [5, 5],
@@ -43,171 +47,122 @@ function initChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
+            plugins: { legend: { display: true, labels: { color: '#94a3b8' } } },
             scales: {
-                y: {
-                    grid: { color: '#334155' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8' }
-                }
+                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             }
         }
     });
 }
 
-// Fetch dashboard data from backend
+// Fetch Data
 async function fetchDashboardData() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dash/`);
+        // FIX: Point to the specific /stats endpoint
+        const response = await fetch(`${API_BASE_URL}/stats/`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // FIX: Check if response is actually JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            throw new Error(`Server returned non-JSON response: ${text.substring(0, 50)}...`);
         }
+
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         
         const data = await response.json();
         updateDashboard(data);
         
     } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        document.getElementById('feedHeading').innerText = `Live Block Feed - Error: ${error.message}`;
+        console.error("Dashboard Error:", error);
+        const feed = document.getElementById('liveFeed');
+        if(feed) feed.innerHTML = `<div style="color:red; padding:20px;">Connection Error: ${error.message}. Is Backend running?</div>`;
     }
 }
 
-// Update dashboard with real data
+// Update UI
 function updateDashboard(data) {
     const records = data.records || [];
     
-    // Group by transaction type for chart
-    const typeGroups = {
+    // 1. Calculate Stats
+    const stats = {
         vehicle: { safe: 0, fraud: 0 },
         bank: { safe: 0, fraud: 0 },
         ecommerce: { safe: 0, fraud: 0 },
         ethereum: { safe: 0, fraud: 0 }
     };
     
-    records.forEach(record => {
-        const type = record.transaction_type;
-        if (typeGroups[type]) {
-            if (record.fraud_score >= 50) {
-                typeGroups[type].fraud++;
-            } else {
-                typeGroups[type].safe++;
-            }
+    records.forEach(r => {
+        const type = r.transaction_type;
+        if (stats[type]) {
+            if (r.fraud_score > 50) stats[type].fraud++;
+            else stats[type].safe++;
         }
     });
+
+    // 2. Update Header Cards
+    document.getElementById('total-scans').innerText = records.length;
+    const totalFraud = Object.values(stats).reduce((acc, curr) => acc + curr.fraud, 0);
+    document.getElementById('fraud-detected').innerText = totalFraud;
     
-    // Update chart
-    dashboardData.labels = ['Vehicle', 'Bank', 'E-Commerce', 'Ethereum'];
-    dashboardData.safeData = [
-        typeGroups.vehicle.safe,
-        typeGroups.bank.safe,
-        typeGroups.ecommerce.safe,
-        typeGroups.ethereum.safe
-    ];
-    dashboardData.fraudData = [
-        typeGroups.vehicle.fraud,
-        typeGroups.bank.fraud,
-        typeGroups.ecommerce.fraud,
-        typeGroups.ethereum.fraud
-    ];
-    
+    // 3. Update Chart
     if (trafficChart) {
-        trafficChart.data.labels = dashboardData.labels;
-        trafficChart.data.datasets[0].data = dashboardData.safeData;
-        trafficChart.data.datasets[1].data = dashboardData.fraudData;
+        trafficChart.data.datasets[0].data = [
+            stats.vehicle.safe, stats.bank.safe, stats.ecommerce.safe, stats.ethereum.safe
+        ];
+        trafficChart.data.datasets[1].data = [
+            stats.vehicle.fraud, stats.bank.fraud, stats.ecommerce.fraud, stats.ethereum.fraud
+        ];
         trafficChart.update();
     }
     
-    // Update live feed
     updateLiveFeed(records);
 }
 
-// Update live feed with recent transactions
+// Update Live Feed
 function updateLiveFeed(records) {
-    const feedContainer = document.getElementById('liveFeed');
-    feedContainer.innerHTML = ''; // Clear existing
+    const feed = document.getElementById('liveFeed');
+    feed.innerHTML = '';
     
-    // Show most recent 10 records
-    const recentRecords = records.slice(0, 10);
-    
-    if (recentRecords.length === 0) {
-        feedContainer.innerHTML = `
-            <div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
-                No transactions yet. Use the scanner to test fraud detection.
-            </div>
-        `;
-        return;
-    }
-    
-    recentRecords.forEach(record => {
-        const isFraud = record.fraud_score >= 50;
-        const timeAgo = getTimeAgo(record.created_at);
-        const txType = record.transaction_type.charAt(0).toUpperCase() + record.transaction_type.slice(1);
+    // Show top 10 recent
+    records.slice(0, 10).forEach(record => {
+        const isFraud = record.fraud_score > 50;
+        const hashDisplay = record.tx_hash ? `${record.tx_hash.substring(0, 10)}...` : 'Pending';
         
-        const div = document.createElement('div');
-        div.className = 'feed-item';
-        div.innerHTML = `
+        // Check if we have real blockchain data fetched
+        const chainInfo = record.blockchain_data 
+            ? `<span style="color:#4ade80; font-size:0.7em;">✓ On-Chain Block: ${record.blockchain_data.timestamp}</span>`
+            : '';
+
+        const item = document.createElement('div');
+        item.className = 'feed-item';
+        item.innerHTML = `
             <div class="feed-header">
-                <span>${txType}</span>
-                <span>${timeAgo}</span>
+                <span style="text-transform: capitalize;">${record.transaction_type}</span>
+                <span style="font-size:0.8em; color:#64748b;">${new Date(record.created_at).toLocaleTimeString()}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="feed-hash">DB ID: ${record.id} | Score: ${record.fraud_score}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                <div style="display:flex; flex-direction:column;">
+                    <span class="feed-hash">TX: ${hashDisplay}</span>
+                    ${chainInfo}
+                </div>
                 <span style="
-                    font-size: 0.7rem; 
-                    font-weight: bold; 
-                    padding: 2px 6px; 
-                    border-radius: 4px; 
-                    background: ${isFraud ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'}; 
+                    background: ${isFraud ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)'};
                     color: ${isFraud ? '#f87171' : '#4ade80'};
+                    padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;
                 ">
-                    ${isFraud ? 'FRAUD' : 'SAFE'}
+                    ${record.fraud_score} / 100
                 </span>
             </div>
-            ${record.blockchain_tx_hash ? `
-                <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                    ⛓️ On-Chain: ${record.blockchain_tx_hash.substring(0, 20)}...
-                </div>
-            ` : ''}
         `;
-        
-        feedContainer.appendChild(div);
+        feed.appendChild(item);
     });
 }
 
-// Helper function to calculate time ago
-function getTimeAgo(timestamp) {
-    if (!timestamp) return 'Unknown';
-    
-    const now = new Date();
-    const then = new Date(timestamp);
-    const diffMs = now - then;
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins === 1) return '1 min ago';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
-    return `${diffDays} days ago`;
-}
-
-// Initialize dashboard on page load
+// Start
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Dashboard initialized. Backend:", API_BASE_URL);
     initChart();
     fetchDashboardData();
-    
-    // Auto-refresh every 5 seconds
-    setInterval(fetchDashboardData, 5000);
+    setInterval(fetchDashboardData, 3000); // Poll every 3 seconds
 });
